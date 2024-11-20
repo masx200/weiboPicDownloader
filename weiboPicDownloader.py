@@ -156,7 +156,7 @@ def confirm(message):
 
 def progress(part, whole, percent = False):
     if percent:
-        return '{}/{}({}%)'.format(part, whole, int(float(part) / whole * 100))
+        return '{}/{}({}%)'.format(part, whole, (float(part) / whole * 100))
     else:
         return '{}/{}'.format(part, whole)
 
