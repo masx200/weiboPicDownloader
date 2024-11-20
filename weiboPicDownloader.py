@@ -356,6 +356,15 @@ def bid_to_mid(string):
     return int(''.join(map(convert, splited)))
 
 def parse_date(text):
+    """
+       解析日期字符串并返回相应的日期。
+
+       参数:
+       text (str): 日期或时间描述的字符串。
+
+       返回:
+       date: 解析后的日期对象。
+       """
     now = datetime.datetime.now()
     if u'前' in text:
         if u'小时' in text:
@@ -368,6 +377,17 @@ def parse_date(text):
         return datetime.datetime.strptime(((str(now.year) + '-') if not re.search(r'^\d{4}', text) else '') + text, '%Y-%m-%d').date()
 
 def compare(standard, operation, candidate):
+    """
+       Compare the given standard value with a set of candidate values based on the specified operation.
+
+       Parameters:
+       standard (int/float): The standard value for comparison.
+       operation (str): The operation to determine the comparison logic, containing one or more of '>', '=', '<'.
+       candidate (iterable): A collection of candidate values to be compared with the standard value.
+
+       Returns:
+       bool: Returns True if any candidate value satisfies the operation condition with the standard value; otherwise, returns False.
+       """
     for target in candidate:
         try:
             result = '>=<'
@@ -379,6 +399,15 @@ def compare(standard, operation, candidate):
             pass
 
 def get_resources(uid, video, interval, limit):
+    """
+     * 根据用户ID获取微博资源
+     *
+     * @param uid 用户ID
+     * @param video 是否获取视频资源
+     * @param interval 请求间隔时间
+     * @param limit 资源筛选的限制条件
+     * @return 返回获取到的资源列表
+    """
     page = 1
     size = 25
     amount = 0
