@@ -356,7 +356,7 @@ except:
 
 token = 'SUB={}'.format(args.cookie) if args.cookie else None
 pool = concurrent.futures.ThreadPoolExecutor(max_workers = args.size)
-
+last_msg = ""
 for number, user in enumerate(users, 1):
     
     print_fit('{}/{} {}'.format(number, len(users), time.ctime()))
@@ -415,10 +415,12 @@ for number, user in enumerate(users, 1):
                 os._exit(1)
             finally:
                 if not cancel:
-                    print_fit(('{} {}'+"\n").format(
-                        'downloading...' if done != total else 'all tasks done',
-                        progress(done, total, True)
-                    ), pin = True)
+                    new__msg = ('{} {}' + "\n").format('downloading...' if done != total else 'all tasks done',
+                                                       progress(done, total, True))
+                    if new__msg != last_msg:
+                        last_msg = new__msg
+                        print_fit(last_msg
+                                  , pin=True)
                 else:
                     print_fit('waiting for cancellation... ({})'.format(total - done), pin = True) 
 
