@@ -299,6 +299,18 @@ def read_from_file(path):
         quit(str(e))
 
 def nickname_to_uid(nickname):
+    """
+      根据微博昵称获取用户UID。
+
+      通过发送GET请求到微博移动端URL，转换昵称到UID。
+      如果URL以'/u/'后跟10位数字结尾，则提取这10位数字作为用户UID。
+
+      参数:
+      nickname (str): 微博用户的昵称。
+
+      返回:
+      str: 用户的UID，如果找不到则返回None。
+      """
     url = 'https://m.weibo.cn/n/{}'.format(nickname)
     response = request_fit('GET', url, cookie = token)
     if re.search(r'/u/\d{10}$', response.url):
@@ -307,6 +319,15 @@ def nickname_to_uid(nickname):
         return
 
 def uid_to_nickname(uid):
+    """
+       根据用户ID获取昵称
+
+       Args:
+       uid (str): 用户ID
+
+       Returns:
+       str: 用户昵称，如果获取失败则返回None
+       """
     url = 'https://m.weibo.cn/api/container/getIndex?type=uid&value={}'.format(uid)
     response = request_fit('GET', url, cookie = token)
     try:
@@ -315,6 +336,18 @@ def uid_to_nickname(uid):
         return
 
 def bid_to_mid(string):
+    """
+        将bid编码字符串转换为mid（消息ID）。
+
+        bid编码是一种自定义的Base62编码方式，它使用62个字符（0-9, a-z, A-Z）来表示信息。
+        本函数的目的是将这种编码的字符串转换回其原始的整数形式（mid）。
+
+        参数:
+        string (str): 需要转换的bid编码字符串。
+
+        返回:
+        int: 转换后的mid（消息ID）。
+        """
     alphabet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
     alphabet = {x: n for n, x in enumerate(alphabet)}
 
