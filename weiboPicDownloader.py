@@ -461,15 +461,45 @@ def get_resources(uid, video, interval, limit):
     return resources
 
 def format_name(item):
+    """
+        根据提供的项生成格式化后的名称。
+
+        该函数从项的URL中提取名称部分，并对其进行安全处理，以确保名称中不包含非法字符。
+        它还支持通过替换模板中的占位符来动态生成名称。
+
+        参数:
+        item (dict): 包含URL和其他信息的字典项。
+
+        返回:
+        str: 格式化并经过安全处理的名称。
+        """
     item['name'] = re.sub(r'\?\S+$', '', re.sub(r'^\S+/', '', item['url']))
 
     def safeify(name):
+        """
+               将名称中的非法字符转换为安全的替代字符。
+
+               参数:
+               name (str): 需要进行安全处理的名称。
+
+               返回:
+               str: 经过安全处理的名称。
+               """
         template = {u'\\': u'＼', u'/': u'／', u':': u'：', u'*': u'＊', u'?': u'？', u'"': u'＂', u'<': u'＜', u'>': u'＞', u'|': u'｜'}
         for illegal in template:
             name = name.replace(illegal, template[illegal])
         return name
 
     def substitute(matched):
+        """
+                替换模板中的占位符。
+
+                参数:
+                matched (re.Match): 匹配到的占位符信息。
+
+                返回:
+                str: 替换后的字符串。
+                """
         key = matched.group(1).split(':')
         if key[0] not in item:
             return ':'.join(key)
@@ -485,6 +515,17 @@ def format_name(item):
     return safeify(re.sub(r'{(.*?)}', substitute, args.name))
 
 def download(url, path, overwrite):
+    """
+       下载文件到指定路径，并根据参数决定是否覆盖现有文件。
+
+       参数:
+       url (str): 要下载的文件的URL。
+       path (str): 保存下载文件的路径。
+       overwrite (bool): 如果文件已存在，是否覆盖文件。
+
+       返回:
+       bool: 下载并保存文件成功返回True，否则返回False。
+       """
     if os.path.exists(path) and not overwrite: return True
     try:
         print_fit('downloading:GET:' + url)
