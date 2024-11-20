@@ -15,6 +15,7 @@ import time
 from functools import reduce
 
 import requests
+
 """这段Python代码主要用于设置命令行参数解析器，以便用户可以通过命令行参数来配置微博图片下载器的行为。具体功能包括：
 系统兼容性和编码设置：尝试设置系统默认编码为UTF-8，并检查是否在Windows系统上运行，如果是，则进行一些特定的初始化操作。
 禁用不安全请求警告：禁用urllib3库的不安全请求警告。
@@ -517,7 +518,8 @@ def format_name(item):
 
     return safeify(re.sub(r'{(.*?)}', substitute, args.name))
 
-def download(url, path, overwrite):
+
+def download(url, path, overwrite, errorcallback):
     """
        下载文件到指定路径，并根据参数决定是否覆盖现有文件。
 
@@ -535,7 +537,8 @@ def download(url, path, overwrite):
         response = request_fit('GET', url, stream = True)
         if response.status_code != 200:
             print_fit('failed to download "{}" status_code ({})'.format(url, response.status_code))
-            os._exit(1)
+            if errorcallback:
+                errorcallback()
         with open(path, 'wb') as f:
             for chunk in response.iter_content(chunk_size = 512):
                 if chunk:
@@ -547,6 +550,18 @@ def download(url, path, overwrite):
         return True
 
 
+"""这段Python代码主要用于从微博下载图片和视频。具体功能如下：
+解析命令行参数：通过argparse库解析用户输入的命令行参数。
+获取用户列表：根据命令行参数从用户列表或文件中读取用户信息。
+设置保存目录：根据命令行参数设置保存下载内容的目录，如果目录不存在则创建。
+解析边界条件：解析用户指定的时间或ID范围，确保范围有效。
+初始化线程池：使用concurrent.futures.ThreadPoolExecutor创建线程池，用于并行下载资源。
+遍历用户列表：对每个用户执行以下操作：
+获取用户的昵称和UID。
+获取用户的所有资源（图片和视频）。
+创建保存资源的子目录。
+使用线程池下载资源，处理下载失败的情况并重试。
+输出结果：打印下载状态和结果。"""
 args = parser.parse_args(nargs_fit(parser, sys.argv[1:]))
 
 if args.users:
@@ -625,7 +640,7 @@ for number, user in enumerate(users, 1):
 
         for resource in resources:
             path = os.path.join(album, format_name(resource))
-            tasks.append(pool.submit(download, resource['url'], path, args.overwrite))
+            tasks.append(pool.submit(download, resource['url'], path, args.overwrite, lambda: os._exit(1)))
 
         while done != total:
             try:
