@@ -1,11 +1,20 @@
 # -*- coding: utf-8 -*-
 
-from functools import reduce
-import sys, locale, platform
-import time, os, json, re, datetime, math, operator
-import concurrent.futures
-import requests
 import argparse
+import concurrent.futures
+import datetime
+import json
+import locale
+import math
+import operator
+import os
+import platform
+import re
+import sys
+import time
+from functools import reduce
+
+import requests
 
 try:
     reload(sys)
@@ -43,6 +52,10 @@ group.add_argument(
 parser.add_argument(
     '-d', metavar = 'directory', dest = 'directory',
     help = 'set picture saving path'
+)
+parser.add_argument(
+    '-y', dest='yes', action='store_true',
+    help="skip confirmation and create pictures directory", default=False
 )
 parser.add_argument(
     '-s', metavar = 'size', dest = 'size',
@@ -104,7 +117,7 @@ def nargs_fit(parser, args):
 def print_fit(string, pin = False):
     if is_python2:
         string = string.encode(system_encoding)
-    if pin == True:
+    if pin:
         sys.stdout.write('\r\033[K')
         sys.stdout.write(string)
         sys.stdout.flush()
@@ -289,7 +302,11 @@ def format_name(item):
 def download(url, path, overwrite):
     if os.path.exists(path) and not overwrite: return True
     try:
+        print_fit('downloading:GET:' + url)
         response = request_fit('GET', url, stream = True)
+        if response.status_code != 200:
+            print_fit('failed to download "{}" status_code ({})'.format(url, response.status_code))
+            os._exit(1)
         with open(path, 'wb') as f:
             for chunk in response.iter_content(chunk_size = 512):
                 if chunk:
@@ -312,8 +329,11 @@ users = [user.strip() for user in users]
 
 if args.directory:
     base = args.directory
+
     if os.path.exists(base):
         if not os.path.isdir(base): quit('saving path is not a directory')
+    elif args.yes:
+        make_dir(base)
     elif confirm('directory "{}" doesn\'t exist, help to create?'.format(base)):
         make_dir(base)
     else:
@@ -382,18 +402,20 @@ for number, user in enumerate(users, 1):
             try:
                 done = 0
                 for index, task in enumerate(tasks):
-                    if task.done() == True:
+                    if task.done():
                         done += 1
                         if task.cancelled(): continue
-                        elif task.result() == False: failed[index] = ''
+                        elif not task.result():
+                            failed[index] = ''
                     elif cancel:
                         if not task.cancelled(): task.cancel()
                 time.sleep(0.5)
             except KeyboardInterrupt:
                 cancel = True
+                os._exit(1)
             finally:
                 if not cancel:
-                    print_fit('{} {}'.format(
+                    print_fit(('{} {}'+"\n").format(
                         'downloading...' if done != total else 'all tasks done',
                         progress(done, total, True)
                     ), pin = True)
