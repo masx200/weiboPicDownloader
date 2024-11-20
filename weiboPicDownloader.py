@@ -15,7 +15,10 @@ import time
 from functools import reduce
 
 import requests
-
+"""这段Python代码主要用于设置命令行参数解析器，以便用户可以通过命令行参数来配置微博图片下载器的行为。具体功能包括：
+系统兼容性和编码设置：尝试设置系统默认编码为UTF-8，并检查是否在Windows系统上运行，如果是，则进行一些特定的初始化操作。
+禁用不安全请求警告：禁用urllib3库的不安全请求警告。
+命令行参数解析：使用argparse库定义了一系列命令行参数，包括用户昵称或ID、文件路径、保存目录、线程池大小、重试次数、请求间隔、Cookie、命名格式、是否下载视频等。"""
 try:
     reload(sys)
     sys.setdefaultencoding('utf8')
