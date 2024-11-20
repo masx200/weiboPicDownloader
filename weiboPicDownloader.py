@@ -95,6 +95,19 @@ parser.add_argument(
 )
 
 def nargs_fit(parser, args):
+    """
+        根据参数解析器和传入的参数列表，调整参数列表以适应nargs规范。
+
+        此函数旨在处理短参数和长参数，并根据参数解析器的规范调整参数列表，
+        以确保正确解析具有不同nargs值的短参数（单破折号）和长参数（双破折号）。
+
+        参数:
+        - parser: 参数解析器对象，应包含 `_option_string_actions` 属性，用于获取所有可选参数的信息。
+        - args: 参数列表，通常是从命令行接收的参数。
+
+        返回:
+        - 调整后的参数列表，以适应nargs规范。
+        """
     flags = parser._option_string_actions
     short_flags = [flag for flag in flags.keys() if len(flag) == 2]
     long_flags = [flag for flag in flags.keys() if len(flag) > 2]
@@ -115,6 +128,16 @@ def nargs_fit(parser, args):
     return args
 
 def print_fit(string, pin = False):
+    """
+       根据环境和参数选择性地打印字符串。
+
+       该函数旨在适应不同情况下的输出需求，包括在Python 2环境中对字符串进行编码，
+       以及根据pin参数决定是否将输出固定在一行。
+
+       参数:
+       - string: 待打印的字符串。
+       - pin: 布尔值，指示是否应将输出固定在一行（默认为False）。
+       """
     if is_python2:
         string = string.encode(system_encoding)
     if pin:
@@ -125,27 +148,86 @@ def print_fit(string, pin = False):
         sys.stdout.write(string + '\n')
 
 def input_fit(string = ''):
+    """
+        根据Python版本选择合适的输入函数。
+
+        在Python 2和Python 3中，输入函数的名称不同：Python 2使用raw_input，而Python 3使用input。
+        本函数根据Python解释器的版本，选择合适的输入函数，并处理字符编码问题，以确保在不同的Python版本下
+        能够正确读取用户输入。
+
+        参数:
+        string (str): 提示信息字符串，显示给用户。
+
+        返回:
+        str: 用户的输入。
+        """
     if is_python2:
         return raw_input(string.encode(system_encoding)).decode(system_encoding)
     else:
         return input(string)
 
 def merge(*dicts):
+    """
+          合并多个字典为一个字典。
+
+          这个函数接受多个字典作为输入参数，并将它们合并成一个字典。如果存在相同的键，
+          后续字典中的值会覆盖前面字典中的值。
+
+          参数:
+          *dicts: 可变数量的字典参数。允许合并两个或多个字典。
+
+          返回:
+          一个字典，包含所有输入字典中的键值对。
+          """
     result = {}
     for dictionary in dicts: result.update(dictionary)
     return result
 
 def quit(string = ''):
+    """
+        打印给定的字符串并退出程序。
+
+        参数:
+        string (str): 要打印的字符串，默认为空字符串。
+
+        返回:
+        无返回值。
+        """
     print_fit(string)
     exit()
 
 def make_dir(path):
+    """
+       创建目录
+
+       该函数尝试创建一个目录，如果遇到任何异常（例如目录已存在、权限不足等），
+       则退出程序并输出异常信息。使用此函数需谨慎，因为它会导致程序立即终止。
+
+       参数:
+       path (str): 要创建的目录路径
+
+       返回:
+       无
+       """
     try:
         os.makedirs(path)
     except Exception as e:
         quit(str(e))
 
 def confirm(message):
+    """
+        请求用户确认以获取布尔值作为响应。
+
+        该函数通过向用户显示一条消息并等待用户输入来请求确认。它接受用户的
+        'Y'或'y'作为真值，'N'或'n'作为假值。如果用户输入的不是预期的值，函数
+        将继续提示直到得到有效的输入。
+
+        参数:
+        message (str): 显示给用户的提示消息。
+
+        返回:
+        bool: 如果用户输入'Y'或'y'则返回True，如果用户输入'N'或'n'则返回False。
+        """
     while True:
         answer = input_fit('{} [Y/n] '.format(message)).strip()
         if answer == 'y' or answer == 'Y':
@@ -155,12 +237,40 @@ def confirm(message):
         print_fit('unexpected answer')
 
 def progress(part, whole, percent = False):
+    """
+        根据部分数量和总量计算进度。
+
+        参数:
+        part (int): 完成的部分数量。
+        whole (int): 总量。
+        percent (bool, optional): 是否显示百分比。默认为False。
+
+        返回:
+        str: 如果percent为True，则返回格式为'部分/总量(百分比%)'的字符串；
+             否则，返回格式为'部分/总量'的字符串。
+        """
     if percent:
         return '{}/{}({}%)'.format(part, whole, (float(part) / whole * 100))
     else:
         return '{}/{}'.format(part, whole)
 
 def request_fit(method, url, max_retry = 0, cookie = None, stream = False):
+    """
+       发起HTTP请求并进行重试。
+
+       该函数通过指定的HTTP方法和URL发起请求，并允许根据max_retry参数的设置进行重试。
+       它还支持通过cookie参数设置请求的Cookie值，以及通过stream参数控制是否以流的形式读取响应。
+
+       参数:
+       - method (str): HTTP方法，例如GET、POST等。
+       - url (str): 请求的URL地址。
+       - max_retry (int): 最大重试次数，默认为0，即不重试。
+       - cookie (str): 请求中携带的Cookie值，默认为None。
+       - stream (bool): 是否以流的形式读取响应，默认为False。
+
+       返回:
+       - requests.Response: 请求的响应对象。
+       """
     headers = {
 'referer': 'https://m.weibo.cn/',
         'User-Agent': 'Mozilla/5.0 (Linux; Android 9; Pixel 3 XL) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.80 Mobile Safari/537.36',
@@ -169,6 +279,19 @@ def request_fit(method, url, max_retry = 0, cookie = None, stream = False):
     return requests.request(method, url, headers = headers, timeout = 5, stream = stream, verify = False)
 
 def read_from_file(path):
+    """
+       从指定的文件路径读取内容并返回。
+
+       该函数尝试打开并读取指定路径下的文件内容。如果是在Python 2环境中运行，
+       它会将每行的内容进行解码。在Python 3环境中，则直接读取。这是为了确保
+       函数在不同的Python版本中能够正确处理文件内容。
+
+       参数:
+       path (str): 文件的路径。
+
+       返回:
+       list: 包含文件每行内容的列表，每行内容都已去除换行符和可能的空白字符。
+       """
     try:
         with open(path, 'r') as f:
             return [line.strip().decode(system_encoding) if is_python2 else line.strip() for line in f]
