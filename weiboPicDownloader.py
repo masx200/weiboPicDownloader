@@ -539,10 +539,17 @@ def download(url, path, overwrite, errorcallback):
             print_fit('failed to download "{}" status_code ({})'.format(url, response.status_code))
             if errorcallback:
                 errorcallback()
+        #先保存到临时文件.part,写入文件，避免下载失败时文件损坏，然后重命名
+        path = path + '.downloading.part'
+        if not os.path.exists(os.path.dirname(path)): os.makedirs(os.path.dirname(path))
+
+
         with open(path, 'wb') as f:
             for chunk in response.iter_content(chunk_size = 512):
                 if chunk:
                     f.write(chunk)
+        os.rename(path, path.replace('.downloading.part', ''))
+        print('saved file success:' + path)
     except Exception:
         if os.path.exists(path): os.remove(path)
         return False
