@@ -519,7 +519,7 @@ def format_name(item):
     return safeify(re.sub(r'{(.*?)}', substitute, args.name))
 
 
-def download(url, path, overwrite, errorcallback):
+def download(url, originalpath, overwrite, errorcallback):
     """
        下载文件到指定路径，并根据参数决定是否覆盖现有文件。
 
@@ -531,7 +531,7 @@ def download(url, path, overwrite, errorcallback):
        返回:
        bool: 下载并保存文件成功返回True，否则返回False。
        """
-    if os.path.exists(path) and not overwrite: return True
+    if os.path.exists(originalpath) and not overwrite: return True
     try:
         print_fit('downloading:GET:' + url)
         response = request_fit('GET', url, stream = True)
@@ -540,18 +540,18 @@ def download(url, path, overwrite, errorcallback):
             if errorcallback:
                 errorcallback()
         #先保存到临时文件.part,写入文件，避免下载失败时文件损坏，然后重命名
-        path = path + '.downloading.part'
-        if not os.path.exists(os.path.dirname(path)): os.makedirs(os.path.dirname(path))
+        pathpart = originalpath + '.downloading.part'
+        if not os.path.exists(os.path.dirname(originalpath)): os.makedirs(os.path.dirname(originalpath))
 
 
-        with open(path, 'wb') as f:
+        with open(pathpart, 'wb') as f:
             for chunk in response.iter_content(chunk_size = 512):
                 if chunk:
                     f.write(chunk)
-        os.rename(path, path.replace('.downloading.part', ''))
-        print('saved file success:' + path)
+        os.rename(pathpart, originalpath)
+        print('saved file success:' + originalpath)
     except Exception:
-        if os.path.exists(path): os.remove(path)
+        if os.path.exists(originalpath): os.remove(originalpath)
         return False
     else:
         return True
