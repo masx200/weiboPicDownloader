@@ -660,7 +660,7 @@ def download(url, originalpath, overwrite, errorcallback):
         return True
     try:
         print_fit("downloading:GET:" + url)
-        response = request_fit("GET", url, stream=True)
+        response = request_fit("GET", url, stream=True,cookie=token)
         if response.status_code != 200:
             print_fit(
                 'failed to download "{}" status_code ({})'.format(
