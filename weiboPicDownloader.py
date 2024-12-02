@@ -31,10 +31,10 @@ system_encoding = sys.stdin.encoding or locale.getpreferredencoding(True)
 
 if platform.system() == "Windows":
     if operator.ge(
-        *map(
-            lambda version: list(map(int, version.split("."))),
-            [platform.version(), "10.0.14393"],
-        )
+            *map(
+                lambda version: list(map(int, version.split("."))),
+                [platform.version(), "10.0.14393"],
+            )
     ):
         os.system("")
     else:
@@ -116,7 +116,7 @@ parser.add_argument(
 parser.add_argument(
     "-o", dest="overwrite", action="store_true", help="overwrite existing files"
 )
-
+parser.add_argument("--cookie-all", metavar="cookieall", dest="cookieall", help="set cookie all if needed")
 
 def nargs_fit(parser, args):
     """
@@ -140,12 +140,12 @@ def nargs_fit(parser, args):
         [flag[1] for flag in short_flags if flags[flag].nargs == 0]
     )
     validate = lambda part: (
-        re.match(r"-[^-]", part)
-        and (
-            set(part[1:-1]).issubset(short_flags_without_args)
-            and "-" + part[-1] in short_flags
-        )
-    ) or (part.startswith("--") and part in long_flags)
+                                    re.match(r"-[^-]", part)
+                                    and (
+                                            set(part[1:-1]).issubset(short_flags_without_args)
+                                            and "-" + part[-1] in short_flags
+                                    )
+                            ) or (part.startswith("--") and part in long_flags)
 
     greedy = False
     for index, arg in enumerate(args):
@@ -402,7 +402,7 @@ def bid_to_mid(string):
     alphabet = {x: n for n, x in enumerate(alphabet)}
 
     splited = [
-        string[(g + 1) * -4 : g * -4 if g * -4 else None]
+        string[(g + 1) * -4: g * -4 if g * -4 else None]
         for g in reversed(range(math.ceil(len(string) / 4.0)))
     ]
     convert = lambda s: str(
@@ -425,7 +425,7 @@ def parse_date(text):
     if "前" in text:
         if "小时" in text:
             return (
-                now - datetime.timedelta(hours=int(re.search(r"\d+", text).group()))
+                    now - datetime.timedelta(hours=int(re.search(r"\d+", text).group()))
             ).date()
         else:
             return now.date()
@@ -520,7 +520,7 @@ def get_resources(uid, video, interval, limit):
                     if compare(limit[0], ">", [mid, date]):
                         exceed = True
                     if compare(limit[0], ">", [mid, date]) or compare(
-                        limit[1], "<", [mid, date]
+                            limit[1], "<", [mid, date]
                     ):
                         continue
                     if "pics" in mblog:
@@ -660,7 +660,7 @@ def download(url, originalpath, overwrite, errorcallback):
         return True
     try:
         print_fit("downloading:GET:" + url)
-        response = request_fit("GET", url, stream=True,cookie=token)
+        response = request_fit("GET", url, stream=True, cookie=token)
         if response.status_code != 200:
             print_fit(
                 'failed to download "{}" status_code ({})'.format(
@@ -745,6 +745,9 @@ except:
     quit("invalid id range {}".format(args.boundary))
 
 token = "SUB={}".format(args.cookie) if args.cookie else None
+if args.cookieall:
+    token = args.cookieall
+print(token)    
 pool = concurrent.futures.ThreadPoolExecutor(max_workers=args.size)
 last_msg = ""
 for number, user in enumerate(users, 1):
