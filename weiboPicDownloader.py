@@ -668,7 +668,8 @@ def download(url, originalpath, overwrite, errorcallback):
                 )
             )
             if errorcallback:
-                errorcallback()
+                errorcallback(url)
+            return False
         # 先保存到临时文件.part,写入文件，避免下载失败时文件损坏，然后重命名
         pathpart = originalpath + ".downloading.part"
         if not os.path.exists(os.path.dirname(originalpath)):
@@ -701,7 +702,7 @@ def download(url, originalpath, overwrite, errorcallback):
 使用线程池下载资源，处理下载失败的情况并重试。
 输出结果：打印下载状态和结果。"""
 args = parser.parse_args(nargs_fit(parser, sys.argv[1:]))
-
+users = []
 if args.users:
     users = (
         [user.decode(system_encoding) for user in args.users]
@@ -789,7 +790,8 @@ for number, user in enumerate(users, 1):
             path = os.path.join(album, format_name(resource))
             tasks.append(
                 pool.submit(
-                    download, resource["url"], path, args.overwrite, lambda: os._exit(1)
+                    download, resource["url"], path, args.overwrite,
+                    lambda url: print("failed to download {}".format(url))
                 )
             )
 
