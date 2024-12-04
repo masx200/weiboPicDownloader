@@ -4,7 +4,8 @@
 
 build user album by picking all photos from original weibos in user's post feed
 
-for more weibo free login APIs, turn to [wiki](https://github.com/nondanee/weiboPicDownloader/wiki)
+for more weibo free login APIs, turn to
+[wiki](https://github.com/nondanee/weiboPicDownloader/wiki)
 
 **[中文 README](README-CN.md)**
 
@@ -29,30 +30,32 @@ $ pip install futures # only python2 environment required
 ## Usage
 
 ```
-$ python .\weiboPicDownloader.py -h
-usage: weiboPicDownloader [-h] (-u user [user ...] | -f file [file ...])
-                          [-d directory] [-s size] [-r retry] [-i interval]
-                          [-c cookie] [-b boundary] [-n name] [-v] [-o]
+usage: weiboPicDownloader [-h] (-u user [user ...] | -f file [file ...]) [-d directory] [-y] [-s size] [-r retry]
+                          [-i interval] [-c cookie] [-b boundary] [-n name] [-v] [-o] [--cookie-all cookieall]
 
-optional arguments:
-  -h, --help          show this help message and exit
-  -u user [user ...]  specify nickname or id of weibo users
-  -f file [file ...]  import list of users from files
-  -d directory        set picture saving path
-  -s size             set size of thread pool
-  -r retry            set maximum number of retries
-  -i interval         set interval for feed requests
-  -c cookie           set cookie if needed
-  -b boundary         focus on weibos in the id range
-  -n name             customize naming format
-  -v                  download videos together
-  -o                  overwrite existing files
+options:
+  -h, --help            show this help message and exit
+  -u user [user ...]    specify nickname or id of weibo users
+  -f file [file ...]    import list of users from files
+  -d directory          set picture saving path
+  -y                    skip confirmation and create pictures directory
+  -s size               set size of thread pool
+  -r retry              set maximum number of retries
+  -i interval           set interval for feed requests
+  -c cookie             set cookie if needed
+  -b boundary           focus on weibos in the id range
+  -n name               customize naming format
+  -v                    download videos together
+  -o                    overwrite existing files
+  --cookie-all cookieall
+                        set cookie all if needed
 ```
 
 Required argument (choose one)
 
 - `-u user ...` users (nickname or id)
-- `-f file ...` user list files (nickname or id, separated by linefeed in the file)
+- `-f file ...` user list files (nickname or id, separated by linefeed in the
+  file)
 
 Optional arguments
 
@@ -60,10 +63,13 @@ Optional arguments
 - `-s size` thread pool size (default value: `20`)
 - `-r retry` max retries (default value: `2`)
 - `-i interval` request interval (default value: `1`, unit: second)
-- `-c cookie` login credential (only need the value of a certain key named `SUB`)
-- `-b boundary` mid/bid/date range of weibos (format: `id:id` between, `:id` before, `id:` after, `id` certain, `:` all)
-- `-n name` naming template (identifier: `url`, `index`, `type`, `mid`, `bid`, `date`, `text`, `name`,
-  like ["f-Strings"](https://www.python.org/dev/peps/pep-0498/#abstract) syntax)
+- `-c cookie` login credential (only need the value of a certain key named
+  `SUB`)
+- `-b boundary` mid/bid/date range of weibos (format: `id:id` between, `:id`
+  before, `id:` after, `id` certain, `:` all)
+- `-n name` naming template (identifier: `url`, `index`, `type`, `mid`, `bid`,
+  `date`, `text`, `name`, like
+  ["f-Strings"](https://www.python.org/dev/peps/pep-0498/#abstract) syntax)
 - `-v` download miaopai videos at the same time
 - `-o` overwrite existing files (skipping if exists for default)
 
@@ -72,4 +78,4 @@ Optional arguments
 1. jump to https://m.weibo.cn and log in
 2. inspect > Application > Cookies > https://m.weibo.cn
 3. double click the `SUB` line and copy its value
-4. paste it into terminal and run like  `-c <value>`
+4. paste it into terminal and run like `-c <value>`

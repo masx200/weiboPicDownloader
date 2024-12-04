@@ -2,13 +2,16 @@
 
 批量下载微博用户图片 (CLI)
 
-只对免登录接口感兴趣的话，直接看 [wiki](https://github.com/nondanee/weiboPicDownloader/wiki) 不用谢
+只对免登录接口感兴趣的话，直接看
+[wiki](https://github.com/nondanee/weiboPicDownloader/wiki) 不用谢
 
 ## 致谢
 
-根源自 Java 项目 [yAnXImIN/weiboPicDownloader](https://github.com/yAnXImIN/weiboPicDownloader)
+根源自 Java 项目
+[yAnXImIN/weiboPicDownloader](https://github.com/yAnXImIN/weiboPicDownloader)
 
-也从另一移植项目学到了好多 [ningshu/weiboPicDownloader](https://github.com/ningshu/weiboPicDownloader)
+也从另一移植项目学到了好多
+[ningshu/weiboPicDownloader](https://github.com/ningshu/weiboPicDownloader)
 
 非常感谢两位巨巨
 
@@ -27,24 +30,25 @@ $ pip install futures # 仅 Python2 需要
 ## 使用
 
 ```
-$ python weiboPicDownloader.py -h
-usage: weiboPicDownloader [-h] (-u user [user ...] | -f file [file ...])
-                          [-d directory] [-s size] [-r retry] [-i interval]
-                          [-c cookie] [-b boundary] [-n name] [-v] [-o]
+usage: weiboPicDownloader [-h] (-u user [user ...] | -f file [file ...]) [-d directory] [-y] [-s size] [-r retry]
+                          [-i interval] [-c cookie] [-b boundary] [-n name] [-v] [-o] [--cookie-all cookieall]
 
-optional arguments:
-  -h, --help          show this help message and exit
-  -u user [user ...]  specify nickname or id of weibo users
-  -f file [file ...]  import list of users from files
-  -d directory        set picture saving path
-  -s size             set size of thread pool
-  -r retry            set maximum number of retries
-  -i interval         set interval for feed requests
-  -c cookie           set cookie if needed
-  -b boundary         focus on weibos in the id range
-  -n name             customize naming format
-  -v                  download videos together
-  -o                  overwrite existing files
+options:
+  -h, --help            show this help message and exit
+  -u user [user ...]    specify nickname or id of weibo users
+  -f file [file ...]    import list of users from files
+  -d directory          set picture saving path
+  -y                    skip confirmation and create pictures directory
+  -s size               set size of thread pool
+  -r retry              set maximum number of retries
+  -i interval           set interval for feed requests
+  -c cookie             set cookie if needed
+  -b boundary           focus on weibos in the id range
+  -n name               customize naming format
+  -v                    download videos together
+  -o                    overwrite existing files
+  --cookie-all cookieall
+                        set cookie all if needed
 ```
 
 必需参数（任选一）
@@ -59,9 +63,11 @@ optional arguments:
 - `-r retry` 最大重试次数（默认值：`2`）
 - `-i interval` 请求间隔（默认值：`1`，单位：秒）
 - `-c cookie` 登录凭据 (需要 cookie 中的 `SUB` 值)
-- `-b boundary` 微博 mid/bid 或日期范围（格式：`id:id` 两者之间，`:id` 之前，`id:` 之后，`id` 指定，`:` 全部）
-- `-n name` 命名模板 (标识符: `url`、`index`、`type`、`mid`、`bid`、`date`、`text`、`name`
-  ，类似 ["f-Strings"](https://www.python.org/dev/peps/pep-0498/#abstract) 语法)
+- `-b boundary` 微博 mid/bid 或日期范围（格式：`id:id` 两者之间，`:id`
+  之前，`id:` 之后，`id` 指定，`:` 全部）
+- `-n name` 命名模板 (标识符:
+  `url`、`index`、`type`、`mid`、`bid`、`date`、`text`、`name` ，类似
+  ["f-Strings"](https://www.python.org/dev/peps/pep-0498/#abstract) 语法)
 - `-v` 同时下载秒拍视频
 - `-o` 重新下载已保存的文件（默认跳过）
 
