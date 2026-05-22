@@ -14,6 +14,7 @@ import sys
 import time
 from functools import reduce
 
+import random
 import requests
 import threading
 
@@ -25,6 +26,56 @@ _session.headers.update({
 })
 _session.verify = False
 _session_lock = threading.Lock()
+
+# 反爬智能延迟器
+_anti_scrape = {
+    "consecutive_errors": 0,    # 连续错误计数
+    "base_delay": 1.0,          # 基础延迟（秒）
+    "max_delay": 30.0,          # 最大延迟（秒）
+    "lock": threading.Lock(),
+}
+
+
+def anti_scrape_sleep(is_api=False):
+    """
+    智能延迟：正常请求随机抖动，连续出错时指数退避。
+
+    参数:
+    - is_api (bool): 是否为翻页 API 请求（翻页比下载更容易触发反爬）
+    """
+    with _anti_scrape["lock"]:
+        errors = _anti_scrape["consecutive_errors"]
+        base = _anti_scrape["base_delay"]
+        cap = _anti_scrape["max_delay"]
+
+    if errors > 0:
+        # 指数退避：2^errors * base，带上限和随机抖动
+        delay = min(cap, base * (2 ** errors))
+        delay *= random.uniform(0.8, 1.2)
+    else:
+        # 正常请求：基础间隔 + 随机抖动
+        delay = base * random.uniform(0.5, 1.5)
+
+    if is_api:
+        # API 翻页请求额外加一点缓冲
+        delay += random.uniform(0.5, 1.5)
+
+    time.sleep(delay)
+
+
+def anti_scrape_success():
+    """请求成功时重置连续错误计数"""
+    with _anti_scrape["lock"]:
+        _anti_scrape["consecutive_errors"] = 0
+
+
+def anti_scrape_fail():
+    """请求失败时递增连续错误计数"""
+    with _anti_scrape["lock"]:
+        _anti_scrape["consecutive_errors"] += 1
+        count = _anti_scrape["consecutive_errors"]
+    print_fit("anti-scrape: consecutive errors={}, backing off".format(count))
+    return count
 
 """这段Python代码主要用于设置命令行参数解析器，以便用户可以通过命令行参数来配置微博图片下载器的行为。具体功能包括：
 系统兼容性和编码设置：尝试设置系统默认编码为UTF-8，并检查是否在Windows系统上运行，如果是，则进行一些特定的初始化操作。
@@ -305,15 +356,18 @@ def progress(part, whole, percent=False):
         return "{}/{}".format(part, whole)
 
 
-def request_fit(method, url, max_retry=0, cookie=None, stream=False):
+def request_fit(method, url, max_retry=0, cookie=None, stream=False, is_api=False):
     """
-    发起HTTP请求并进行重试。
+    发起HTTP请求并进行重试，内置反爬检测。
 
     使用全局 Session 自动管理 Cookie：服务端返回的 Set-Cookie 会自动
     保存在 Session 中，后续请求会自动携带，无需手动拼接。
 
-    如果用户通过 -c 或 --cookie-all 传入了自定义 Cookie，会在首次请求
-    时注入到 Session 中（仅注入一次）。
+    内置反爬机制：
+    - 检测 418 状态码（微博反爬经典返回码）
+    - 检测非 200 状态码
+    - 成功时重置退避计数，失败时递增退避计数
+    - 通过 anti_scrape_sleep() 在请求前自动延迟
 
     参数:
     - method (str): HTTP方法，例如GET、POST等。
@@ -321,6 +375,7 @@ def request_fit(method, url, max_retry=0, cookie=None, stream=False):
     - max_retry (int): 最大重试次数，默认为0，即不重试。
     - cookie (str): 初始请求的Cookie值（可选，注入到 Session 后由 Session 自动管理）。
     - stream (bool): 是否以流的形式读取响应，默认为False。
+    - is_api (bool): 是否为翻页 API 请求（会额外增加延迟缓冲）。
 
     返回:
     - requests.Response: 请求的响应对象。
@@ -328,9 +383,20 @@ def request_fit(method, url, max_retry=0, cookie=None, stream=False):
     with _session_lock:
         if cookie and "Cookie" not in _session.headers:
             _session.headers["Cookie"] = cookie
-    return _session.request(
-        method, url, timeout=5, stream=stream
-    )
+
+    anti_scrape_sleep(is_api=is_api)
+
+    response = _session.request(method, url, timeout=5, stream=stream)
+
+    if response.status_code == 418:
+        anti_scrape_fail()
+        print_fit("WARNING: HTTP 418 detected, anti-scraping triggered! backing off...")
+    elif response.status_code != 200:
+        anti_scrape_fail()
+    else:
+        anti_scrape_success()
+
+    return response
 
 
 def read_from_file(path):
@@ -518,73 +584,86 @@ def get_resources(uid, video, interval, limit):
             url = "https://m.weibo.cn/api/container/getIndex?count={}&page={}&containerid=107603{}".format(
                 size, page, uid
             )
-            response = request_fit("GET", url)
-            assert response.status_code != 418
+            response = request_fit("GET", url, is_api=True)
+
+            if response.status_code == 418:
+                print_fit(
+                    "anti-scraping triggered (418) at page #{}, backing off...".format(page), pin=True
+                )
+                empty = aware
+                continue
+
             json_data = json.loads(response.text)
-        except AssertionError:
-            print_fit(
-                "punished by anti-scraping mechanism (#{})".format(page), pin=True
-            )
-            empty = aware
-        except Exception:
-            pass
+        except Exception as e:
+            print_fit("request error at page #{}: {}".format(page, e), pin=True)
+            anti_scrape_fail()
         else:
-            empty = empty + 1 if json_data["ok"] == 0 else 0
-            if total == 0 and "cardlistInfo" in json_data["data"]:
-                total = json_data["data"]["cardlistInfo"]["total"]
-            cards = json_data["data"]["cards"]
-            for card in cards:
-                if "mblog" in card:
-                    mblog = card["mblog"]
-                    if "isTop" in mblog and mblog["isTop"]:
-                        continue
-                    mid = int(mblog["mid"])
-                    date = parse_date(mblog["created_at"])
-                    mark = {
-                        "mid": mid,
-                        "bid": mblog["bid"],
-                        "date": date,
-                        "text": mblog["text"],
-                    }
-                    amount += 1
-                    if compare(limit[0], ">", [mid, date]):
-                        exceed = True
-                    if compare(limit[0], ">", [mid, date]) or compare(
-                            limit[1], "<", [mid, date]
-                    ):
-                        continue
-                    if "pics" in mblog:
-                        for index, pic in enumerate(mblog["pics"], 1):
-                            if "large" in pic:
-                                resources.append(
-                                    merge(
-                                        {
-                                            "url": pic["large"]["url"],
-                                            "index": index,
-                                            "type": "photo",
-                                        },
-                                        mark,
-                                    )
-                                )
-                    elif "page_info" in mblog and video:
-                        if "media_info" in mblog["page_info"]:
-                            media_info = mblog["page_info"]["media_info"]
-                            streams = [
-                                media_info[key]
-                                for key in [
-                                    "mp4_720p_mp4",
-                                    "mp4_hd_url",
-                                    "mp4_sd_url",
-                                    "stream_url",
-                                ]
-                                if key in media_info and media_info[key]
-                            ]
-                            if streams:
-                                resources.append(
-                                    merge(
-                                        {"url": streams.pop(0), "type": "video"}, mark
-                                    )
-                                )
+            # 安全访问：反爬或异常响应可能没有 "ok" 或 "data" 字段
+            if not isinstance(json_data, dict) or json_data.get("ok") != 1:
+                empty = empty + 1
+                print_fit("empty or abnormal response at page #{}".format(page), pin=True)
+            else:
+                empty = 0
+                data = json_data.get("data", {})
+                if not isinstance(data, dict):
+                    empty = empty + 1
+                    print_fit("invalid data format at page #{}".format(page), pin=True)
+                else:
+                    if total == 0 and "cardlistInfo" in data:
+                        total = data["cardlistInfo"]["total"]
+                    cards = data.get("cards", [])
+                    for card in cards:
+                        if "mblog" in card:
+                            mblog = card["mblog"]
+                            if "isTop" in mblog and mblog["isTop"]:
+                                continue
+                            mid = int(mblog["mid"])
+                            date = parse_date(mblog["created_at"])
+                            mark = {
+                                "mid": mid,
+                                "bid": mblog["bid"],
+                                "date": date,
+                                "text": mblog["text"],
+                            }
+                            amount += 1
+                            if compare(limit[0], ">", [mid, date]):
+                                exceed = True
+                            if compare(limit[0], ">", [mid, date]) or compare(
+                                    limit[1], "<", [mid, date]
+                            ):
+                                continue
+                            if "pics" in mblog:
+                                for index, pic in enumerate(mblog["pics"], 1):
+                                    if "large" in pic:
+                                        resources.append(
+                                            merge(
+                                                {
+                                                    "url": pic["large"]["url"],
+                                                    "index": index,
+                                                    "type": "photo",
+                                                },
+                                                mark,
+                                            )
+                                        )
+                            elif "page_info" in mblog and video:
+                                if "media_info" in mblog["page_info"]:
+                                    media_info = mblog["page_info"]["media_info"]
+                                    streams = [
+                                        media_info[key]
+                                        for key in [
+                                            "mp4_720p_mp4",
+                                            "mp4_hd_url",
+                                            "mp4_sd_url",
+                                            "stream_url",
+                                        ]
+                                        if key in media_info and media_info[key]
+                                    ]
+                                    if streams:
+                                        resources.append(
+                                            merge(
+                                                {"url": streams.pop(0), "type": "video"}, mark
+                                            )
+                                        )
             print_fit(
                 "{} {}(#{})".format(
                     (
