@@ -593,6 +593,15 @@ def get_resources(uid, video, interval, limit):
                 empty = aware
                 continue
 
+            # 检查响应体是否为空或非 JSON（反爬/异常响应的常见表现）
+            if not response.text or not response.text.strip().startswith("{"):
+                print_fit("empty or non-JSON response at page #{} (status={})".format(page, response.status_code), pin=True)
+                anti_scrape_fail()
+                empty = empty + 1
+                time.sleep(interval)
+                page += 1
+                continue
+
             json_data = json.loads(response.text)
         except Exception as e:
             print_fit("request error at page #{}: {}".format(page, e), pin=True)
