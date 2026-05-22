@@ -351,7 +351,10 @@ def nickname_to_uid(nickname):
     根据微博昵称获取用户UID。
 
     通过发送GET请求到微博移动端URL，转换昵称到UID。
-    如果URL以'/u/'后跟10位数字结尾，则提取这10位数字作为用户UID。
+    兼容以下三种重定向场景：
+    1. 最终URL以 /u/XXXXXXXXXX 结尾（正常情况）
+    2. 重定向历史中某一跳的URL以 /u/XXXXXXXXXX 结尾
+    3. 被跳转到 passport 域名时，UID 编码在 url 参数里（如 %2Fu%2F5026377162）
 
     参数:
     nickname (str): 微博用户的昵称。
@@ -361,10 +364,26 @@ def nickname_to_uid(nickname):
     """
     url = "https://m.weibo.cn/n/{}".format(nickname)
     response = request_fit("GET", url, cookie=token)
+
+    # 场景1：最终 URL 直接匹配（原始逻辑）
     if re.search(r"/u/\d{10}$", response.url):
         return response.url[-10:]
-    else:
-        return
+
+    # 场景2：从重定向历史中提取
+    for r in response.history:
+        if re.search(r"/u/\d{10}$", r.url):
+            return r.url[-10:]
+        loc = r.headers.get("Location", "")
+        m = re.search(r"/u/(\d{10})", loc)
+        if m:
+            return m.group(1)
+
+    # 场景3：UID 以 URL 编码形式藏在 passport 跳转参数里
+    m = re.search(r"%2Fu%2F(\d{10})", response.url)
+    if m:
+        return m.group(1)
+
+    return
 
 
 def uid_to_nickname(uid):

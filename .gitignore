@@ -6,7 +6,7 @@ __pycache__/
 # C extensions
 *.so
 .idea
-
+test_nickname_to_uid.py
 # Distribution / packaging
 .Python
 env/
@@ -70,7 +70,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-
+.workbuddy
 # pyenv
 .python-version
 
