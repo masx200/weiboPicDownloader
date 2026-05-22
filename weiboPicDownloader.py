@@ -15,6 +15,16 @@ import time
 from functools import reduce
 
 import requests
+import threading
+
+# 全局 Session，自动管理 Cookie（线程安全）
+_session = requests.Session()
+_session.headers.update({
+    "referer": "https://m.weibo.cn/",
+    "User-Agent": "Mozilla/5.0 (Linux; Android 9; Pixel 3 XL) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.80 Mobile Safari/537.36",
+})
+_session.verify = False
+_session_lock = threading.Lock()
 
 """这段Python代码主要用于设置命令行参数解析器，以便用户可以通过命令行参数来配置微博图片下载器的行为。具体功能包括：
 系统兼容性和编码设置：尝试设置系统默认编码为UTF-8，并检查是否在Windows系统上运行，如果是，则进行一些特定的初始化操作。
@@ -299,26 +309,27 @@ def request_fit(method, url, max_retry=0, cookie=None, stream=False):
     """
     发起HTTP请求并进行重试。
 
-    该函数通过指定的HTTP方法和URL发起请求，并允许根据max_retry参数的设置进行重试。
-    它还支持通过cookie参数设置请求的Cookie值，以及通过stream参数控制是否以流的形式读取响应。
+    使用全局 Session 自动管理 Cookie：服务端返回的 Set-Cookie 会自动
+    保存在 Session 中，后续请求会自动携带，无需手动拼接。
+
+    如果用户通过 -c 或 --cookie-all 传入了自定义 Cookie，会在首次请求
+    时注入到 Session 中（仅注入一次）。
 
     参数:
     - method (str): HTTP方法，例如GET、POST等。
     - url (str): 请求的URL地址。
     - max_retry (int): 最大重试次数，默认为0，即不重试。
-    - cookie (str): 请求中携带的Cookie值，默认为None。
+    - cookie (str): 初始请求的Cookie值（可选，注入到 Session 后由 Session 自动管理）。
     - stream (bool): 是否以流的形式读取响应，默认为False。
 
     返回:
     - requests.Response: 请求的响应对象。
     """
-    headers = {
-        "referer": "https://m.weibo.cn/",
-        "User-Agent": "Mozilla/5.0 (Linux; Android 9; Pixel 3 XL) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.80 Mobile Safari/537.36",
-        "Cookie": cookie,
-    }
-    return requests.request(
-        method, url, headers=headers, timeout=5, stream=stream, verify=False
+    with _session_lock:
+        if cookie and "Cookie" not in _session.headers:
+            _session.headers["Cookie"] = cookie
+    return _session.request(
+        method, url, timeout=5, stream=stream
     )
 
 
@@ -363,7 +374,7 @@ def nickname_to_uid(nickname):
     str: 用户的UID，如果找不到则返回None。
     """
     url = "https://m.weibo.cn/n/{}".format(nickname)
-    response = request_fit("GET", url, cookie=token)
+    response = request_fit("GET", url)
 
     # 场景1：最终 URL 直接匹配（原始逻辑）
     if re.search(r"/u/\d{10}$", response.url):
@@ -397,7 +408,7 @@ def uid_to_nickname(uid):
     str: 用户昵称，如果获取失败则返回None
     """
     url = "https://m.weibo.cn/api/container/getIndex?type=uid&value={}".format(uid)
-    response = request_fit("GET", url, cookie=token)
+    response = request_fit("GET", url)
     try:
         return json.loads(response.text)["data"]["userInfo"]["screen_name"]
     except:
@@ -507,7 +518,7 @@ def get_resources(uid, video, interval, limit):
             url = "https://m.weibo.cn/api/container/getIndex?count={}&page={}&containerid=107603{}".format(
                 size, page, uid
             )
-            response = request_fit("GET", url, cookie=token)
+            response = request_fit("GET", url)
             assert response.status_code != 418
             json_data = json.loads(response.text)
         except AssertionError:
@@ -679,7 +690,7 @@ def download(url, originalpath, overwrite, errorcallback):
         return True
     try:
         print_fit("downloading:GET:" + url)
-        response = request_fit("GET", url, stream=True, cookie=token)
+        response = request_fit("GET", url, stream=True)
         if response.status_code != 200:
             print_fit(
                 'failed to download "{}" status_code ({})'.format(
@@ -763,10 +774,11 @@ try:
 except:
     quit("invalid id range {}".format(args.boundary))
 
-token = "SUB={}".format(args.cookie) if args.cookie else None
-if args.cookieall:
-    token = args.cookieall
-print(token)    
+token = "SUB={}".format(args.cookie) if args.cookie else args.cookieall or None
+if token:
+    with _session_lock:
+        _session.headers["Cookie"] = token
+print_fit("initial cookie: {}".format(token or "(none)"))
 pool = concurrent.futures.ThreadPoolExecutor(max_workers=args.size)
 last_msg = ""
 for number, user in enumerate(users, 1):
